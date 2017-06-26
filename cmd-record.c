@@ -1414,7 +1414,7 @@ int command_record(int argc, char *argv[], struct opts *opts)
 
 	nr_cpu = sysconf(_SC_NPROCESSORS_ONLN);
 
-	if (opts->kernel) {
+	if (opts->kernel || has_kernel_event(opts->event)) {
 		int err;
 
 		kernel.pid = pid;
