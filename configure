@@ -1,6 +1,9 @@
 #!/bin/bash
 #-*- mode: shell-script; -*-
 
+# this is needed to trigger configure to be called for the new check:
+# perf_context_switch
+
 prefix=/usr/local
 
 srcdir=$(readlink -f $(dirname $0))
@@ -100,6 +103,7 @@ output=${output:-${objdir}/.config}
 MAKEFLAGS=
 MAKEOVERRIDES=
 
+make -siC ${srcdir}/check-deps check-clean
 make -siC ${srcdir}/check-deps check-build
 
 if [ ! -e ${srcdir}/check-deps/have_libelf ]; then
