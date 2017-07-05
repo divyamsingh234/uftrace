@@ -990,6 +990,44 @@ int read_task_args(struct ftrace_task_handle *task,
 	return 0;
 }
 
+int read_task_event(struct ftrace_task_handle *task,
+		    struct uftrace_record *rec)
+{
+	if (rec->addr == EVENT_ID_RUSAGE) {
+		uint16_t len;
+		int rem;
+		struct uftrace_rusage ur;
+
+		if (fread(&len, sizeof(len), 1, task->fp) != 1)
+			return -1;
+
+		assert(len == sizeof(ur));
+
+		if (fread(&ur, sizeof(ur), 1, task->fp) != 1)
+			return -1;
+
+		if (task->h->needs_byte_swap) {
+			ur.utime = bswap_64(ur.utime);
+			ur.stime = bswap_64(ur.stime);
+			ur.rss   = bswap_64(ur.rss);
+		}
+
+		/* abuse task->args */
+		task->args.len = len;
+		task->args.data = xrealloc(task->args.data, sizeof(ur));
+
+		memcpy(task->args.data, &ur, sizeof(ur));
+
+		rem = (len + 2) % 8;
+		if (rem)
+			fseek(task->fp, 8 - rem, SEEK_CUR);
+	}
+	else
+		pr_err_ns("unknown event has data: %u\n", rec->addr);
+
+	return 0;
+}
+
 /**
  * read_task_ustack - read user function record for @task
  * @handle: file handle
@@ -1018,14 +1056,12 @@ int read_task_ustack(struct ftrace_file_handle *handle,
 	}
 
 	if (task->ustack.more) {
-		if (!(handle->hdr.feat_mask & (ARGUMENT | RETVAL)) ||
-		    handle->info.argspec == NULL)
-			pr_err_ns("invalid data (more bit set w/o args)");
-
 		if (task->ustack.type == UFTRACE_ENTRY)
 			read_task_args(task, &task->ustack, false);
 		else if (task->ustack.type == UFTRACE_EXIT)
 			read_task_args(task, &task->ustack, true);
+		else if (task->ustack.type == UFTRACE_EVENT)
+			read_task_event(task, &task->ustack);
 		else
 			abort();
 	}
