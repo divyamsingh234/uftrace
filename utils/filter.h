@@ -106,6 +106,12 @@ struct filter_module {
 	char			name[];
 };
 
+struct uftrace_rusage {
+	uint64_t		utime;  /* user time in usec */
+	uint64_t		stime;  /* system time in usec */
+	uint64_t		rss;    /* max rss in KB */
+};
+
 typedef void (*trigger_fn_t)(struct ftrace_trigger *tr, void *arg);
 
 void ftrace_setup_filter(char *filter_str, struct symtabs *symtabs,

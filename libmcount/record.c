@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/resource.h>
 #include <fcntl.h>
 #include <pthread.h>
 
@@ -346,10 +347,32 @@ void save_retval(struct mcount_thread_data *mtdp,
 	*(unsigned *)argbuf = size;
 }
 
+static void save_rusage(void *buf)
+{
+	struct rusage r;
+	struct uftrace_rusage *ur = buf;
+
+	if (getrusage(RUSAGE_SELF, &r) < 0)
+		pr_err("getrusage() failed");
+
+	ur->utime = r.ru_utime.tv_sec * USEC_PER_SEC * r.ru_utime.tv_usec;
+	ur->stime = r.ru_stime.tv_sec * USEC_PER_SEC * r.ru_stime.tv_usec;
+	ur->rss   = r.ru_maxrss;
+}
+
 void save_trigger_read(struct mcount_thread_data *mtdp,
 		       struct mcount_ret_stack *rstack,
 		       enum trigger_read_type type)
 {
+	if (type & TRIGGER_READ_RUSAGE) {
+		struct mcount_event *event;
+		event = &mtdp->event[mtdp->nr_events++];
+
+		event->id    = EVENT_ID_RUSAGE;
+		event->time  = rstack->start_time;
+		event->dsize = sizeof(struct uftrace_rusage);
+		save_rusage(event->data);
+	}
 }
 
 #else
