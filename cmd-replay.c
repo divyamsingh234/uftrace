@@ -339,10 +339,26 @@ static void print_event(struct ftrace_task_handle *task,
 				return;
 			}
 		}
-		pr_out("user event: %u", evt_id);
+		pr_out("user_event:%u", evt_id);
 		return;
 	}
 
+	if (evt_id >= EVENT_ID_BUILTIN) {
+		struct uftrace_rusage *ur;
+
+		switch (evt_id) {
+		case EVENT_ID_RUSAGE:
+			ur = task->args.data;
+			pr_out("read:rusage (rss = %luKB)", ur->rss);
+			return;
+		default:
+			break;
+		}
+		pr_out("builtin_event:%u", evt_id);
+		return;
+	}
+
+	/* kernel events */
 	event = pevent_find_event(task->h->kernel->pevent, evt_id);
 	pr_out("%s:%s (%.*s)", event->system, event->name,
 	       task->args.len, task->args.data);
